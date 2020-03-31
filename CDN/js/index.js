@@ -10,15 +10,51 @@
     ZoomMtg.preLoadWasm();
 
     ZoomMtg.prepareJssdk();
-    
-    var API_KEY = 'YOUR_API_KEY';
 
-    /**
-     * NEVER PUT YOUR ACTUAL API SECRET IN CLIENT SIDE CODE, THIS IS JUST FOR QUICK PROTOTYPING
-     * The below generateSignature should be done server side as not to expose your api secret in public
-     * You can find an eaxmple in here: https://marketplace.zoom.us/docs/sdk/native-sdks/web/essential/signature
-     */
-    var API_SECRET = 'YOUR_API_SECRET';
+    const SIGNATURE_ENDPOINT = 'https://mixzoom.herokuapp.com/';
+    function zoomConnect(meetConfig) {
+        if(!meetConfig.meetingNumber) throw new Error('need meeting id');
+        console.log('getting sig', meetConfig);
+        fetch(`${SIGNATURE_ENDPOINT}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    meetingNumber: meetConfig.meetingNumber, 
+                    meetingData: meetConfig, 
+                    role: 0 
+                })
+            })
+            .then(result => result.json())
+            .then(result=>result.signature)
+            .then(response => {
+                console.log('response',response);
+                ZoomMtg.init({
+                    leaveUrl: meetConfig.leaveUrl,
+                    isSupportAV: true,
+                    success: function() {
+                        ZoomMtg.join({
+                            signature: response,
+                            apiKey: meetConfig.apiKey,
+                            meetingNumber: meetConfig.meetingNumber,
+                            /// userName: meetConfig.userName,
+                            // Email required for Webinars
+                            // userEmail: meetConfig.userEmail, 
+                            // password optional; set by Host
+                            // password: meetConfig.password,
+                            success: function(res){
+                                $('#nav-tool').hide();
+                                console.log('join meeting success');
+                            },
+                            error: function(res) {
+                                console.log(res);
+                            }
+                        })		
+                    }
+                })
+        })
+    }
 
 
     document.getElementById('join_meeting').addEventListener('click', function(e){
@@ -29,17 +65,22 @@
             return false;
         }
 
+        const url = new URL(window.location.href);
+        const meetingid = url.searchParams.get("meeting");
+
         var meetConfig = {
-            apiKey: API_KEY,
-            apiSecret: API_SECRET,
-            meetingNumber: parseInt(document.getElementById('meeting_number').value),
+            apiKey: '4yaP1M0LTPCCCl0uzBe0ag',
+            // apiSecret: API_SECRET,
+            meetingNumber: parseInt(meetingid) || 12345672020,
             userName: document.getElementById('display_name').value,
             passWord: "",
-            leaveUrl: "https://zoom.us",
+            leaveUrl: "https://mixopinions.org",
             role: 0
         };
 
+        zoomConnect(meetConfig);
 
+/*
         var signature = ZoomMtg.generateSignature({
             meetingNumber: meetConfig.meetingNumber,
             apiKey: meetConfig.apiKey,
@@ -51,7 +92,7 @@
         });
 
         ZoomMtg.init({
-            leaveUrl: 'http://www.zoom.us',
+            leaveUrl: 'https://mixopinions.org',
             isSupportAV: true,
             success: function () {
                 ZoomMtg.join(
@@ -76,7 +117,7 @@
                 console.log(res);
             }
         });
-
+*/
     });
 
 })();
